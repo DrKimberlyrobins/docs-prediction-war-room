@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DOC'S PREDICTION WAR ROOM</title>
+<link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<header><div class="shell mast"><a href="./" class="brand"><span>DOC’S</span> PREDICTION WAR ROOM</a><nav aria-label="War Room"><a href="./">Slate</a><a href="results.html">Results &amp; receipts</a></nav></div></header>
+<main class="shell">
+<section class="intro"><div class="eyebrow">Basketball forecasting</div><h1>Prediction War Room</h1><p id="date">Loading published slate…</p><div id="status" class="status"></div></section>
+<section id="feature" class="feature" aria-labelledby="feature-title"><h2 id="feature-title">Top prediction of the day</h2><div id="top"></div><details><summary>Top 10 predictions</summary><ol id="ranked"></ol></details></section>
+<section aria-labelledby="slate-title"><div class="section-head"><h2 id="slate-title">Matchups</h2><label>Slate date <select id="day"></select></label></div><nav id="filters" class="filters" aria-label="League filters"></nav><div id="games" class="games"></div></section>
+<section class="method"><h2>Model &amp; sources</h2><p id="formula"></p><p id="validation"></p><p>Ranking divides the points of model disagreement by historical RMSE and discounts small team samples. Historical tests roll forward by date. Cover probabilities are withheld pending calibration.</p><p>Sources: ESPN scoreboards and their attributed market feed. <a href="https://www.nba.com/players/injury-report">Official NBA injury reports</a>.</p></section>
+</main>
+<dialog id="detail"><div class="dialog-head"><button id="close" type="button">Close</button></div><div id="analysis"></div></dialog>
+</body>
+</html>
