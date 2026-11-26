@@ -86,10 +86,13 @@ async function slate() {
   el("filters").before(receiptButton);
   receiptButton.addEventListener("click", () => {
     const day = el("day").value;
-    const games = board.games.filter(g=>g.day===day).sort((a,b)=>Number(b.time_valid)-Number(a.time_valid)||String(a.tip).localeCompare(String(b.tip)));
+    const leagueOrder = ["mens-college-basketball","womens-college-basketball","nba"];
+    const leagueRank = g => leagueOrder.includes(g.league) ? leagueOrder.indexOf(g.league) : leagueOrder.length;
+    const games = board.games.filter(g=>g.day===day).sort((a,b)=>leagueRank(a)-leagueRank(b)||a.league.localeCompare(b.league)||Number(b.time_valid)-Number(a.time_valid)||String(a.tip).localeCompare(String(b.tip)));
     const rows = games.map((g,i)=>{
       const f=g.forecast, p=f?.projection, pick=f?.pick, h=f?.first_half;
-      return '<tr><td>'+ (i+1) +'</td><td>'+esc(g.time_valid?central(g.tip,{hour:"numeric",minute:"2-digit",timeZoneName:"short"}):"TBD")+'</td><td>'+esc(matchup(g))+'<small>'+esc(board.leagues[g.league])+'</small></td><td>'+esc(pick?.name ?? (p?"Score projection only":"Forecast unavailable"))+'</td><td>'+esc(h?pts(h.away)+"–"+pts(h.home):"—")+'</td><td>'+esc(h && h.away != null && h.home != null?pts(Number(h.away)+Number(h.home)):"—")+'</td><td>'+esc(p?pts(p.away)+"–"+pts(p.home):"—")+'</td><td>'+esc(p?pts(p.away+p.home):"—")+'</td><td>'+esc(f?.captured?stamp(f.captured):"—")+'</td></tr>';
+      const section = i===0 || games[i-1].league!==g.league ? '<tr><th colspan="9" scope="rowgroup">'+esc(board.leagues[g.league] ?? g.league)+'</th></tr>' : "";
+      return section + '<tr><td>'+ (i+1) +'</td><td>'+esc(g.time_valid?central(g.tip,{hour:"numeric",minute:"2-digit",timeZoneName:"short"}):"TBD")+'</td><td>'+esc(matchup(g))+'<small>'+esc(board.leagues[g.league])+'</small></td><td>'+esc(pick?.name ?? (p?"Score projection only":"Forecast unavailable"))+'</td><td>'+esc(h?pts(h.away)+"–"+pts(h.home):"—")+'</td><td>'+esc(h && h.away != null && h.home != null?pts(Number(h.away)+Number(h.home)):"—")+'</td><td>'+esc(p?pts(p.away)+"–"+pts(p.home):"—")+'</td><td>'+esc(p?pts(p.away+p.home):"—")+'</td><td>'+esc(f?.captured?stamp(f.captured):"—")+'</td></tr>';
     }).join("");
     const w=window.open("","_blank");
     if(!w){alert("Allow pop-ups to open the prediction receipt.");return;}
