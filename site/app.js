@@ -78,6 +78,25 @@ async function slate() {
       <span class="teams"><span>${esc(g.away.name)}</span><span>${g.neutral?"vs.":"at"} ${esc(g.home.name)}</span></span>
       <span class="${g.forecast?"ready":"muted"}">${g.forecast?.pick ? "Market forecast ready" : g.forecast ? "Score projection ready" : "Forecast unavailable"}</span></button>`).join("") || "<p>No matchups in this view.</p>";
   }
+
+  const receiptButton = document.createElement("button");
+  receiptButton.type = "button";
+  receiptButton.textContent = "Print All Predictions";
+  receiptButton.style.cssText = "margin:8px 0;padding:10px 16px;background:#102A4C;color:white;border:0;border-radius:6px;cursor:pointer;font-weight:700";
+  el("filters").before(receiptButton);
+  receiptButton.addEventListener("click", () => {
+    const day = el("day").value;
+    const games = board.games.filter(g=>g.day===day).sort((a,b)=>Number(b.time_valid)-Number(a.time_valid)||String(a.tip).localeCompare(String(b.tip)));
+    const rows = games.map((g,i)=>{
+      const f=g.forecast, p=f?.projection, pick=f?.pick, h=f?.first_half;
+      return '<tr><td>'+ (i+1) +'</td><td>'+esc(g.time_valid?central(g.tip,{hour:"numeric",minute:"2-digit",timeZoneName:"short"}):"TBD")+'</td><td>'+esc(matchup(g))+'<small>'+esc(board.leagues[g.league])+'</small></td><td>'+esc(pick?.name ?? (p?"Score projection only":"Forecast unavailable"))+'</td><td>'+esc(h?pts(h.away)+"–"+pts(h.home):"—")+'</td><td>'+esc(p?pts(p.away)+"–"+pts(p.home):"—")+'</td><td>'+esc(p?pts(p.away+p.home):"—")+'</td><td>'+esc(f?.captured?stamp(f.captured):"—")+'</td></tr>';
+    }).join("");
+    const w=window.open("","_blank");
+    if(!w){alert("Allow pop-ups to open the prediction receipt.");return;}
+    w.opener=null;
+    w.document.write('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Daily prediction receipt</title><style>body{font:13px Arial,sans-serif;color:#111;background:white;margin:24px}h1{font-size:22px;margin-bottom:5px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:7px;text-align:left;vertical-align:top}th{background:#eee}small{display:block;color:#555}tr{break-inside:avoid}thead{display:table-header-group}@page{size:landscape;margin:10mm}@media print{button{display:none}body{margin:0}}</style></head><body><button onclick="window.print()">Print / Save PDF</button><h1>DOC’S PREDICTION WAR ROOM — Daily Receipt</h1><p>'+esc(dayName(day))+' · '+games.length+' games · Board updated '+esc(stamp(board.generated))+' · Receipt created '+esc(stamp(new Date()))+'</p><p>Existing forecasts only. Scores are away–home. For research and grading, not a combined wager. Missing forecasts are shown explicitly.</p><table><thead><tr><th>#</th><th>Tip</th><th>Matchup</th><th>Existing prediction</th><th>1H score</th><th>Full score</th><th>Total</th><th>Forecast saved</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>');
+    w.document.close();
+  });
   el("day").addEventListener("change",draw);
   document.addEventListener("click", e=>{
     const button = e.target.closest("button");
