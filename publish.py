@@ -34,13 +34,14 @@ def archive(g, forecast, observed):
             pick = receipt["pick"] or {}
             return [pick.get(key) for key in quote_keys]
         same_picks = comparable(last) == comparable(forecast)
+        same_market = last.get("cover_market") == forecast.get("cover_market")
         new_injuries = (forecast.get("injuries") or {}).get("entries")
         old_injuries = (last.get("injuries") or {}).get("entries")
         halves = forecast["first_half"], last["first_half"]
         same_half = (halves[0] is None and halves[1] is None) or (
             all(halves) and all(abs(halves[0][side] - halves[1][side]) < .25 for side in ("home", "away")))
         same_score = all(abs(p[side] - old[side]) < .25 for side in ("home", "away"))
-        if same_picks and same_score and same_half and new_injuries == old_injuries and last["version"] == forecast["version"]:
+        if same_market and same_picks and same_score and same_half and new_injuries == old_injuries and last["version"] == forecast["version"]:
             return
     receipt = {"game_id": g["id"], "league": g["league"], "tip": g["tip"],
                "home": g["home"]["name"], "away": g["away"]["name"],
@@ -78,6 +79,7 @@ def grade_archive(all_games):
             r["grade"] = grade(final, r["pick"]) if final else None
             if final:
                 r["final"] = {s: final[s]["score"] for s in ("home", "away")}
+                r["halftime"] = {s: final[s].get("half") for s in ("home", "away")}
                 p = r["projection"]
                 r["margin_error"] = abs((p["home"]-p["away"])-(r["final"]["home"]-r["final"]["away"]))
             r["receipt"] = str(ref.relative_to("site"))
@@ -125,6 +127,8 @@ def main():
                 if projection:
                     forecast = {"version": VERSION, "projection": projection,
                                 "first_half": score(game, half_fit, .75),
+                                "cover_market": [q for q in game["market"] if q["type"] in ("spread", "half_spread")],
+                                "cover_validation": {key: validation.get(key) for key in ("score_margin", "half_margin")},
                                 "pick": select(game, projection, validation),
                                 "coverage": ["Individual injury impact, starters, minutes, and defender assignments unavailable in the model.",
                                              "Possession-based efficiency and pace are unavailable. The model uses opponent-adjusted scoring per game."]}
