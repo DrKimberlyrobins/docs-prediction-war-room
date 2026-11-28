@@ -94,6 +94,12 @@ async function slate() {
     el("status").innerHTML = `<strong>${games.length} scheduled · ${projected} projected</strong><span>Data verified ${esc(stamp(board.generated))}</span>${stale ? "<strong>Archived slate · current update unavailable</strong>" : ""}${misses.length ? "<span>Schedule unavailable: "+esc(misses.join(", "))+"</span>" : ""}`;
     el("top").innerHTML = ranked.length ? `<button class="lead" data-game="${esc(ranked[0].id)}">${esc(ranked[0].forecast.pick.name)}</button><div>${esc(matchup(ranked[0]))} · ${pts(ranked[0].forecast.pick.edge)} pts model disagreement</div>` : "<p>No ranked forecasts for this slate.</p>";
     el("ranked").innerHTML = ranked.map(g=>`<li><button data-game="${esc(g.id)}">${esc(g.forecast.pick.name)} · ${esc(matchup(g))}</button></li>`).join("");
+    let leagueRanks = el("league-ranks");
+    if (!leagueRanks) { leagueRanks=document.createElement("div"); leagueRanks.id="league-ranks"; el("feature").after(leagueRanks); }
+    leagueRanks.innerHTML = Object.entries(board.leagues).map(([key,name])=>{
+      const group=games.filter(g=>g.league===key && g.forecast?.pick?.rank!=null).sort((a,b)=>b.forecast.pick.rank-a.forecast.pick.rank).slice(0,10);
+      return `<details class="feature" style="margin-top:12px"><summary>${esc(name)} — Top 10 (${group.length})</summary>${group.length ? '<ol>'+group.map((g,i)=>`<li><button data-game="${esc(g.id)}" style="${i===0?'color:#E9B85B;font-weight:bold':''}">${esc(g.forecast.pick.name)} · ${esc(matchup(g))}</button></li>`).join('')+'</ol>' : '<p>No eligible ranked market forecasts available.</p>'}</details>`;
+    }).join("");
     el("filters").innerHTML = [["","All Games"],...Object.entries(board.leagues)].map(([key,name])=>`<button data-league="${esc(key)}" aria-pressed="${filter===key}">${esc(name)}</button>`).join("");
     const visible = games.filter(g=>!filter || g.league===filter);
     el("games").innerHTML = visible.map(g=>`<button class="card" data-game="${esc(g.id)}">
@@ -114,10 +120,17 @@ async function slate() {
     const games = board.games.filter(g=>g.day===day).sort((a,b)=>leagueRank(a)-leagueRank(b)||a.league.localeCompare(b.league)||Number(b.time_valid)-Number(a.time_valid)||String(a.tip).localeCompare(String(b.tip)));
     const topIds = board.games.filter(g=>g.day===day && g.forecast?.pick?.rank != null).sort((a,b)=>b.forecast.pick.rank-a.forecast.pick.rank).slice(0,10).map(g=>g.id);
     const topId = topIds[0];
+    const leagueTopIds = new Set();
+    const leagueRankedIds = new Set(topIds);
+    for (const league of Object.keys(board.leagues)) {
+      const ids = games.filter(g=>g.league===league && g.forecast?.pick?.rank!=null).sort((a,b)=>b.forecast.pick.rank-a.forecast.pick.rank).slice(0,10).map(g=>g.id);
+      if(ids.length) leagueTopIds.add(ids[0]);
+      ids.forEach(id=>leagueRankedIds.add(id));
+    }
     const rows = games.map((g,i)=>{
       const f=g.forecast, p=f?.projection, pick=f?.pick, h=f?.first_half;
       const section = i===0 || games[i-1].league!==g.league ? '<tr><th colspan="9" scope="rowgroup">'+esc(board.leagues[g.league] ?? g.league)+'</th></tr>' : "";
-      return section + (g.id===topId?'<tr class="top-prediction">':topIds.includes(g.id)?'<tr class="ranked-prediction">':'<tr>')+'<td>'+ (i+1) +'</td><td>'+esc(g.time_valid?central(g.tip,{hour:"numeric",minute:"2-digit",timeZoneName:"short"}):"TBD")+'</td><td>'+esc(matchup(g))+'<small>'+esc(board.leagues[g.league])+'</small></td><td>'+esc(pick?.name ?? (p?"Score projection only":"Forecast unavailable"))+'</td><td>'+esc(h?pts(h.away)+"–"+pts(h.home)+(h.away!=null&&h.home!=null?" ("+pts(Number(h.away)+Number(h.home))+")":""):"—")+'</td><td>'+esc(h && h.away != null && h.home != null?pts(Number(h.away)+Number(h.home)):"—")+'</td><td>'+esc(p?pts(p.away)+"–"+pts(p.home)+(p.away!=null&&p.home!=null?" ("+pts(Number(p.away)+Number(p.home))+")":""):"—")+'</td><td>'+esc(p?pts(p.away+p.home):"—")+'</td><td>'+esc(f?.captured?stamp(f.captured):"—")+'</td></tr>';
+      return section + ((g.id===topId||leagueTopIds.has(g.id))?'<tr class="top-prediction">':leagueRankedIds.has(g.id)?'<tr class="ranked-prediction">':'<tr>')+'<td>'+ (i+1) +'</td><td>'+esc(g.time_valid?central(g.tip,{hour:"numeric",minute:"2-digit",timeZoneName:"short"}):"TBD")+'</td><td>'+esc(matchup(g))+'<small>'+esc(board.leagues[g.league])+'</small></td><td>'+esc(pick?.name ?? (p?"Score projection only":"Forecast unavailable"))+'</td><td>'+esc(h?pts(h.away)+"–"+pts(h.home)+(h.away!=null&&h.home!=null?" ("+pts(Number(h.away)+Number(h.home))+")":""):"—")+'</td><td>'+esc(h && h.away != null && h.home != null?pts(Number(h.away)+Number(h.home)):"—")+'</td><td>'+esc(p?pts(p.away)+"–"+pts(p.home)+(p.away!=null&&p.home!=null?" ("+pts(Number(p.away)+Number(p.home))+")":""):"—")+'</td><td>'+esc(p?pts(p.away+p.home):"—")+'</td><td>'+esc(f?.captured?stamp(f.captured):"—")+'</td></tr>';
     }).join("");
     const w=window.open("","_blank");
     if(!w){alert("Allow pop-ups to open the prediction receipt.");return;}
