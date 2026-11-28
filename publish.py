@@ -144,6 +144,9 @@ def main():
                 game["forecast"] = json.loads(previous[-1].read_text())
             game["day"] = str(day)
             upcoming.append(game)
+    # Preserve each daily slate before the rolling board drops it.
+    for day in sorted({g["day"] for g in upcoming}):
+        write(ROOT / "history" / f"{day}.json", {"games": [g for g in upcoming if g["day"] == day]})
     write(ROOT / "results.json", grade_archive(all_games))
     write(ROOT / "board.json", {"generated": observed.isoformat(), "today": str(today),
                                 "formula": FORMULA, "version": VERSION, "counts": dict(counts),
