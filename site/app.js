@@ -57,11 +57,34 @@ function detail(g) {
 async function slate() {
   const board = await read("board");
   let filter = "";
-  const dates = [...new Set([board.today, ...board.games.map(g => g.day)])].sort();
+  const shift = (day, n) => { const d = new Date(day+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+  const dates = [...new Set([board.today, ...board.games.map(g => g.day), ...Array.from({length:30},(_,i)=>shift(board.today,-i-1)).filter(d=>d >= "2026-11-27")])].sort();
   el("day").innerHTML = dates.map(d=>`<option value="${d}">${esc(dayName(d))}</option>`).join("");
+  el("day").value = board.today;
+  const nav = document.createElement("nav");
+  nav.className = "filters"; nav.setAttribute("aria-label","Daily slate navigation");
+  nav.innerHTML = `<button type="button" id="prev-day">‹ Previous</button><button type="button" id="today-day">Today</button><button type="button" id="next-day">Tomorrow ›</button>`;
+  el("feature").before(nav);
+  let request = 0;
+  async function changeDay(day) {
+    if (!dates.includes(day)) return;
+    const token = ++request;
+    el("day").value = day;
+    if (!board.games.some(g=>g.day===day)) {
+      try { const res = await fetch(`data/history/${day}.json`,{cache:"no-cache"}); if(!res.ok) throw Error(); const archive = await res.json(); if(token!==request)return; board.games.push(...archive.games); } catch { if(token!==request)return; }
+    }
+    if(token===request) draw();
+  }
+  el("prev-day").onclick=()=>changeDay(shift(el("day").value,-1));
+  el("today-day").onclick=()=>changeDay(board.today);
+  el("next-day").onclick=()=>changeDay(shift(el("day").value,1));
   function draw() {
     const day = el("day").value;
     const games = board.games.filter(g=>g.day===day);
+    el("prev-day").disabled=!dates.includes(shift(day,-1));
+    el("next-day").disabled=!dates.includes(shift(day,1));
+    el("next-day").textContent=day===board.today?"Tomorrow ›":"Next ›";
+    el("today-day").setAttribute("aria-pressed",String(day===board.today));
     const ranked = games.filter(g=>g.forecast?.pick?.rank != null)
       .sort((a,b)=>b.forecast.pick.rank-a.forecast.pick.rank).slice(0,10);
     const projected = games.filter(g=>g.forecast).length;
@@ -101,7 +124,7 @@ async function slate() {
     w.document.write('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Daily prediction receipt</title><style>body{font:11px Arial,sans-serif;color:#111;background:white;margin:16px}h1{font-size:22px;margin-bottom:5px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px;text-align:left;vertical-align:top}th{background:#eee}.top-prediction td{background:#fff0b3;font-weight:bold;border-top:2px solid #8a6b19;border-bottom:2px solid #8a6b19;print-color-adjust:exact;-webkit-print-color-adjust:exact}small{display:block;color:#555}tr{break-inside:avoid}thead{display:table-header-group}@page{size:landscape;margin:10mm}@media print{button{display:none}body{margin:0}}</style></head><body><button onclick="window.print()">Print / Save PDF</button><h1>DOC’S PREDICTION WAR ROOM — Daily Receipt</h1><p>'+esc(dayName(day))+' · '+games.length+' games · Board updated '+esc(stamp(board.generated))+' · Receipt created '+esc(stamp(new Date()))+'</p><p>Existing forecasts only. Scores are away–home. For research and grading, not a combined wager. Missing forecasts are shown explicitly.</p><table><thead><tr><th>#</th><th>Tip</th><th>Matchup</th><th>Existing prediction</th><th>1H score</th><th>1H total</th><th>Full score</th><th>Total</th><th>Forecast saved</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>');
     w.document.close();
   });
-  el("day").addEventListener("change",draw);
+  el("day").addEventListener("change",()=>changeDay(el("day").value));
   document.addEventListener("click", e=>{
     const button = e.target.closest("button");
     if (!button) return;
